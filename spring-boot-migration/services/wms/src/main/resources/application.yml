@@ -1,0 +1,13 @@
+spring:
+  application:
+    name: geoserver-wms
+  
+server:
+  port: 8080
+  servlet:
+    context-path: /geoserver
+
+logging:
+  level:
+    org.geoserver.wms: DEBUG
+    org.springframework: INFO
