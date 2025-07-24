@@ -1,171 +1,166 @@
 ---
-description: Set up a standardized Spring Boot module architecture
+description: Set up a standardized Spring Boot 3.5.3 module architecture
 ---
 
-# Spring Boot Module Architecture Setup
+# Spring Boot 3.5.3 Module Setup
 
-This workflow provides a standardized approach to setting up a new Spring Boot module architecture.
+This workflow sets up a Spring Boot 3.5.3 module following modern Java 17+ patterns and Jakarta EE standards.
 
-Use the below workflow to set up the user specified module.
+**IMPORTANT**: Migrated modules are created in the existing `spring-boot-migration/` multi-module Maven structure.
 
-## Directory Structure
-Create the following directory structure in your module's `src/main/java/org/geoserver/[module]/springboot/` folder:
+## Prerequisites
+
+- Java 17 LTS
+- Spring Boot 3.5.3
+- Spring Framework 6.0.x
+- Jakarta EE 9+ (not javax.*)
+- Maven 3.8.x+
+
+## Existing Multi-Module Structure
+
+The `spring-boot-migration/` directory contains a multi-module Maven project:
 
 ```
-src/main/java/org/geoserver/[module]/springboot/
-├── config/           # Configuration classes
-│   ├── ModuleConfig        # Module-specific configuration
-│   └── SecurityConfig      # Security configuration
-├── controller/      # REST controllers
-│   └── *Controller        # Endpoint controllers
-├── service/         # Business logic layer
-│   └── *Service          # Service implementations
-├── model/           # Domain models and DTOs
-│   └── dto/             # Data Transfer Objects
-├── repository/      # Data access layer
-│   └── *Repository      # Data access interfaces
-└── util/            # Utility classes
-    ├── ModuleException   # Module-specific exceptions
-    └── ModuleUtils      # Utility functions
+spring-boot-migration/
+├── pom.xml                    # Parent POM with Spring Boot 3.5.3
+├── core/                      # Core GeoServer functionality
+├── common/                    # Shared utilities and components
+├── services/                  # Service modules (WMS, WFS, WCS, etc.)
+│   ├── pom.xml               # Services parent POM
+│   ├── wms/                  # Existing WMS module
+│   └── [new-module]/         # Your new service module goes here
+├── rest/                      # REST API modules
+├── web/                       # Web interface modules
+└── docs/                      # Documentation
+```
+
+## Service Module Structure
+
+For service modules (like `restconfig-wmts`), create in `services/[module]/`:
+
+```
+spring-boot-migration/services/[module]/
+├── pom.xml                      # Module-specific dependencies
+├── src/main/java/org/geoserver/[module]/
+│   ├── config/
+│   │   ├── [Module]Config.java      # @Configuration
+│   │   └── SecurityConfig.java      # Spring Security 6.x
+│   ├── controller/
+│   │   └── [Module]Controller.java  # @RestController
+│   ├── service/
+│   │   ├── [Module]Service.java     # Interface
+│   │   └── [Module]ServiceImpl.java # @Service implementation
+│   ├── model/
+│   │   ├── [Module].java           # Entity/Domain model
+│   │   └── dto/
+│   │       └── [Module]DTO.java    # Data Transfer Objects
+│   └── exception/
+│       └── [Module]Exception.java  # Custom exceptions
+└── src/test/java/org/geoserver/[module]/
+    ├── controller/
+    └── service/
 ```
 
 ## Implementation Steps
 
-1. **Create Base Package Structure**
-   ```bash
-   mkdir -p src/main/java/org/geoserver/[module]/springboot/{config,controller,service,model,repository,util}
-   ```
-2. **Create Main SpringBoot Service Application Java file**
-   - Create `[Module]Application.java` in the root package with proper Spring Boot annotations
+1. **Create new service module structure**
+```bash
+cd spring-boot-migration/services
+mkdir -p [module]/src/main/java/org/geoserver/[module]/{config,controller,service,model/dto,exception}
+mkdir -p [module]/src/test/java/org/geoserver/[module]/{controller,service}
+```
 
-3. **Document Module Architecture**
-   - Create `[module]-architecture.md` in the module root directory
-   - Document the module structure using the following template:
-   ```markdown
-   # [Module] Architecture
-   
-   ```
-   src/main/java/org/geoserver/[module]/springboot/
-   ├── config/           # Configuration classes
-   │   ├── [Module]Config     # Module-specific configuration
-   │   └── SecurityConfig     # Security configuration
-   ├── controller/      # REST controllers
-   │   └── *Controller        # Endpoint controllers
-   ├── service/         # Business logic layer
-   │   └── *Service          # Service implementations
-   ├── model/           # Domain models and DTOs
-   │   └── dto/             # Data Transfer Objects
-   ├── repository/      # Data access layer
-   │   └── *Repository      # Data access interfaces
-   └── util/            # Utility classes
-       ├── [Module]Exception  # Module-specific exceptions
-       └── [Module]Utils     # Utility functions
-   ```
-   
-   ## Key Components
-   - Document each component's responsibility
-   - List key classes and their purposes
-   - Describe module-specific patterns
-   - Include design principles and decisions
-   ```
+2. **Create pom.xml with Spring Boot 3.5.3**
+```xml
+<parent>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-parent</artifactId>
+    <version>3.5.3</version>
+    <relativePath/>
+</parent>
 
-4. **Configuration Setup**
-   - Create `ModuleConfig` class with `@Configuration` annotation
-   - Set up module-specific beans and properties
-   - Configure security if needed with `SecurityConfig`
+<dependencies>
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-security</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-validation</artifactId>
+    </dependency>
+</dependencies>
+```
 
-5. **Controllers**
-   - Create controllers for each major endpoint
-   - Use `@RestController` and proper request mappings
-   - Follow REST API naming conventions
-   - Implement proper error handling
+3. **Create Configuration class**
+```java
+@Configuration
+@EnableWebSecurity
+public class [Module]Config {
+    // Bean definitions
+}
+```
 
-6. **Services**
-   - Create service interfaces and implementations
-   - Use `@Service` annotation
-   - Implement business logic
-   - Add proper transaction management
+4. **Create Controller with modern patterns**
+```java
+@RestController
+@RequestMapping("/api/v1/[module]")
+@RequiredArgsConstructor
+public class [Module]Controller {
+    private final [Module]Service service;
+    
+    @GetMapping("/{id}")
+    public ResponseEntity<[Module]DTO> get(@PathVariable Long id) {
+        // Implementation
+    }
+}
+```
 
-7. **Models**
-   - Create domain models
-   - Add DTOs for request/response objects
-   - Implement proper validation
-   - Add serialization annotations if needed
+5. **Create Service with constructor injection**
+```java
+@Service
+@RequiredArgsConstructor
+public class [Module]ServiceImpl implements [Module]Service {
+    private final [Module]Repository repository;
+    
+    @Override
+    @Transactional(readOnly = true)
+    public [Module]DTO findById(Long id) {
+        // Implementation
+    }
+}
+```
 
-8. **Repositories**
-   - Create repository interfaces
-   - Use Spring Data where applicable
-   - Add custom queries if needed
-   - Implement caching strategy
+6. **Create tests with Spring Boot 3.x patterns**
+```java
+@SpringBootTest
+class [Module]ServiceTest {
+    @Test
+    void whenFindById_thenReturn[Module]() {
+        // AAA pattern: Arrange, Act, Assert
+    }
+}
+```
 
-9. **Utilities**
-   - Add module-specific exceptions
-   - Create utility classes
-   - Add common helper functions
+## Key Spring Boot 3.5.3 Features
 
-## Best Practices
+- **Jakarta EE**: Use `jakarta.*` imports (not `javax.*`)
+- **Constructor Injection**: Use `@RequiredArgsConstructor` (Lombok)
+- **Security 6.x**: Lambda-based configuration
+- **Native Compilation**: GraalVM ready
+- **Observability**: Built-in metrics and tracing
 
-1. **Package Naming**
-   - Use `org.geoserver.[module].springboot.*`
-   - Keep consistent with existing modules
-   - Use descriptive package names
+## Validation Checklist
 
-2. **Class Naming**
-   - Controllers: `*Controller`
-   - Services: `*Service`, `*ServiceImpl`
-   - Repositories: `*Repository`
-   - Models: Clear domain names
-   - Config: `*Config`
+- [ ] Java 17+ syntax used
+- [ ] Jakarta EE imports (no javax.*)
+- [ ] Constructor injection pattern
+- [ ] Modern Spring Security config
+- [ ] Proper exception handling
+- [ ] Test coverage > 80%
+- [ ] API documentation (OpenAPI)
 
-3. **Dependencies**
-   - Add to module's `pom.xml`:
-   ```xml
-   <dependencies>
-       <dependency>
-           <groupId>org.springframework.boot</groupId>
-           <artifactId>spring-boot-starter-web</artifactId>
-       </dependency>
-       <dependency>
-           <groupId>org.springframework.boot</groupId>
-           <artifactId>spring-boot-starter-security</artifactId>
-       </dependency>
-       <!-- Add other needed starters -->
-   </dependencies>
-   ```
-
-4. **Testing Structure**
-   Create parallel test structure:
-   ```
-   src/test/java/org/geoserver/[module]/springboot/
-   ├── controller/      # Controller tests
-   ├── service/        # Service tests
-   └── repository/     # Repository tests
-   ```
-
-5. **Documentation**
-   - Add Javadoc to all public APIs
-   - Include README.md in module root
-   - Document configuration properties
-
-## Validation
-
-1. **Code Quality**
-   - Run checkstyle
-   - Verify test coverage
-   - Check for proper exception handling
-
-2. **Security**
-   - Verify endpoint security
-   - Check authentication/authorization
-   - Validate input sanitization
-
-3. **Testing**
-   - Run unit tests
-   - Execute integration tests
-   - Verify API contracts
-
-## Notes
-- Replace `[module]` with your specific module name
-- Adjust structure based on module requirements
-- Follow team's Java style guide
-- Ensure proper Spring Boot version compatibility
+Run `/java-style-validation` to verify compliance.
